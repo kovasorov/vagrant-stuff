@@ -4,17 +4,18 @@
 Vagrant.configure("2") do |config|
   config.vm.box = "generic/debian10"
   # port forward sample
-  #config.vm.network "forwarded_port", guest: 464, host: 464
+  config.vm.network "forwarded_port", guest: 8080, host: 8080
   #config.vm.network "forwarded_port", guest: 88, host: 88, protocol: "udp"
   username = "#{ENV['USERNAME'] || `whoami`}"
   config.vm.synced_folder "/home/#{username}/_prj/", "/home/vagrant/_prj/", type: "virtualbox"
   config.vm.provision "shell", inline: <<-SHELL
-    apt-get update
-    apt-get install -y apt-transport-https ca-certificates curl jq gnupg-agent software-properties-common
-    curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
-    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable"
-    apt-get update
-    apt-get install -y docker-ce docker-ce-cli containerd.io
+    REQ="apt-transport-https ca-certificates curl gnupg lsb-release jq"
+    DPACK="docker-ce docker-ce-cli containerd.io"
+    apt-get update && apt-get install -y ${REQ}
+    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian \
+    $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+    apt-get update && apt-get install -y ${DPACK}
     usermod -aG docker vagrant
     VERSION=$(curl --silent https://api.github.com/repos/docker/compose/releases/latest | jq .name -r)
     curl -fsSL "https://github.com/docker/compose/releases/download/${VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
